@@ -8,40 +8,75 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <link rel="manifest" href="manifest.webmanifest">
-  <title>CampWordle 🍻</title>
+  <title>LostWordle 🍻</title>
 
   <style>
-    body{margin:0;background:#121213;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial}
-    .wrap{max-width:520px;margin:0 auto;padding:14px;text-align:center}
-    h1{margin:10px 0 6px;font-size:28px}
-    .sub{color:#bdbdbd;font-size:12px;font-weight:700;margin-bottom:10px}
-    .grid{display:inline-block;margin-top:6px}
-    .row{display:flex;justify-content:center}
-    .tile{width:54px;height:54px;margin:3px;border:2px solid #3a3a3c;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800}
+    body{
+      margin:0;
+      background:#121213;
+      color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;
+      overscroll-behavior:none;
+    }
+    .wrap{
+      max-width:420px;
+      margin:0 auto;
+      padding:8px 10px env(safe-area-inset-bottom);
+      text-align:center;
+    }
+    h1{ margin:6px 0 4px; font-size:26px; }
+    .sub{ color:#bdbdbd; font-size:11px; font-weight:700; margin-bottom:6px; }
+    .grid{ display:inline-block; margin-top:4px; }
+    .row{ display:flex; justify-content:center; }
+    .tile{
+      width:46px; height:46px; margin:3px;
+      border:2px solid #3a3a3c;
+      display:flex; align-items:center; justify-content:center;
+      font-size:24px; font-weight:800; box-sizing:border-box;
+    }
     .empty{background:#121213}
     .correct{background:#538d4e;border-color:#538d4e}
     .present{background:#b59f3b;border-color:#b59f3b}
     .absent{background:#3a3a3c;border-color:#3a3a3c}
-    .kb{margin-top:14px}
-    .kbrow{display:flex;justify-content:center}
-    .key{background:#818384;color:#fff;font-weight:800;border-radius:4px;margin:3px;padding:14px 10px;min-width:30px;user-select:none}
-    .wide{padding:14px 18px}
-    .status{margin-top:10px;font-weight:700}
-    .rules{margin-top:10px;color:#8c8c8c;font-size:11px;font-weight:700}
-    .btn{display:inline-block;margin-top:10px;background:#2a2a2c;border:1px solid #3a3a3c;border-radius:8px;padding:10px 14px;font-weight:900}
+
+    .kb{ margin-top:8px; }
+    .kbrow{ display:flex; justify-content:center; }
+    .key{
+      background:#818384; color:#fff; font-weight:800;
+      border-radius:4px; margin:3px;
+      padding:12px 8px; min-width:28px; font-size:14px;
+      user-select:none;
+    }
+    .wide{ padding:12px 14px; }
+
+    .status{ margin-top:6px; font-weight:700; font-size:14px; padding:0 10px; min-height:18px; }
+    .rules{ margin-top:6px; color:#8c8c8c; font-size:10px; font-weight:700; }
+    .btnRow{ display:flex; justify-content:center; gap:8px; margin-top:6px; flex-wrap:wrap; }
+    .btn{
+      display:inline-block;
+      background:#2a2a2c;
+      border:1px solid #3a3a3c;
+      border-radius:8px;
+      padding:8px 12px;
+      font-weight:900;
+      font-size:12px;
+    }
   </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>CampWordle 🍻</h1>
+  <h1>LostWordle 🍻</h1>
   <div class="sub" id="sub"></div>
 
   <div class="grid" id="grid"></div>
-
   <div class="kb" id="kb"></div>
 
   <div class="status" id="status"></div>
-  <div class="btn" id="newRound">NEW ROUND (same day)</div>
+
+  <div class="btnRow">
+    <div class="btn" id="newRound">NEW ROUND (same day)</div>
+  </div>
+
   <div class="rules">Rules: grey = 2 sips • yellow = 1 sip • green = 0 sips</div>
 </div>
 
@@ -49,8 +84,14 @@
 /* ========= CONFIG ========= */
 const WORD_LEN = 5;
 const MAX_TRIES = 6;
-const FESTIVAL_UTC_OFFSET_MINUTES = 11 * 60; // GMT+11
-const FESTIVAL_WORDS = ["CRANE","SHARD","MIRTH","BLAZE","GUEST","FROST"];
+
+// GMT+11
+const FESTIVAL_UTC_OFFSET_MINUTES = 11 * 60;
+
+// Harder daily words (Day 1 = today). All 5 letters.
+const FESTIVAL_WORDS = ["GLYPH","QUELL","COVEN","WRAITH","PSALM","VEXED"];
+
+// Drinking rules
 const SIP_VALUES = { correct:0, present:1, absent:2 };
 
 /* ========= TIME (GMT+11) ========= */
@@ -71,6 +112,7 @@ function calcDayIndex(startMidnight){
 /* ========= STATE ========= */
 const startMidnight = festivalMidnight();
 let dayIndex = calcDayIndex(startMidnight);
+
 let secret = "";
 let guesses = []; // {word,result}
 let current = "";
@@ -125,6 +167,7 @@ function submitGuess(){
   if(current.length!==WORD_LEN) return;
 
   const guess = onlyAZ(current);
+
   const result = scoreGuess(guess);
   const guessSips = sipsForResult(result);
   sipTotal += guessSips;
@@ -139,7 +182,6 @@ function submitGuess(){
 
   if(won || lost){
     stage="done";
-    // Popup: iOS Safari supports alert fine
     const msg = `You owe ${sipTotal} sip${sipTotal===1?"":"s"} 🍺`;
     setTimeout(()=>alert("🍻 DRINK UP\n\n"+msg), 50);
     statusEl.textContent = won ? "🎉 Correct!" : `❌ Out of tries. Word was ${secret}`;
@@ -215,7 +257,7 @@ newRoundBtn.onclick=()=>{
   render();
 };
 
-// Rollover check (every 10s)
+// Day rollover at midnight (GMT+11)
 setInterval(()=>{
   const newIdx = calcDayIndex(startMidnight);
   if(newIdx!==dayIndex){

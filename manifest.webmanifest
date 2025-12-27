@@ -1,6 +1,6 @@
 {
-  "name": "CampWordle",
-  "short_name": "CampWordle",
+  "name": "LostWordle",
+  "short_name": "LostWordle",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#121213",
