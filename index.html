@@ -1,342 +1,208 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#121213" />
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#121213" />
+<meta name="apple-mobile-web-app-capable" content="yes">
 
-  <link rel="manifest" href="manifest.webmanifest">
-  <title>LostWordle 🍻</title>
+<link rel="manifest" href="manifest.webmanifest">
+<title>LostWordle 🍻</title>
 
-  <style>
-    :root{
-      /* Tile size scales with screen width, but stays in a safe range */
-      --tile: clamp(38px, 9.5vw, 46px);
-      --gap: clamp(2px, 0.9vw, 3px);
+<style>
+:root{
+  --bg:#121213;
+  --key:#818384;
+  --green:#538d4e;
+  --yellow:#b59f3b;
+  --grey:#3a3a3c;
 
-      /* Key sizes scale too */
-      --keyPadY: clamp(10px, 2.3vw, 12px);
-      --keyPadX: clamp(6px, 1.8vw, 10px);
-      --keyFont: clamp(12px, 3.2vw, 14px);
+  --tile: clamp(42px, 10vw, 52px);
+  --gap: 4px;
+  --key-h: clamp(44px, 10.5vw, 56px);
+  --key-w: clamp(28px, 7.2vw, 38px);
+  --key-font: clamp(12px, 3.6vw, 16px);
+}
 
-      --maxWidth: 420px;
-    }
+*{box-sizing:border-box;}
+html,body{
+  margin:0;height:100%;
+  background:var(--bg);color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;
+  overflow:hidden;
+}
 
-    body{
-      margin:0;
-      background:#121213;
-      color:#fff;
-      font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;
-      overscroll-behavior:none;
-    }
+.app{
+  height:100svh;
+  display:flex;
+  flex-direction:column;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
+}
 
-    .wrap{
-      max-width: var(--maxWidth);
-      margin:0 auto;
-      padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-      text-align:center;
-    }
+.header{text-align:center;padding:10px;border-bottom:1px solid #2a2a2c;}
+.title{margin:0;font-size:28px;font-weight:800;}
+.sub{margin-top:6px;font-size:12px;color:#bdbdbd;font-weight:700;}
 
-    h1{
-      margin:6px 0 4px;
-      font-size: clamp(22px, 5.8vw, 26px);
-    }
+.main{flex:1;display:flex;align-items:center;justify-content:center;}
+.grid{display:flex;flex-direction:column;gap:var(--gap);}
+.row{display:flex;gap:var(--gap);}
 
-    .sub{
-      color:#bdbdbd;
-      font-size: clamp(10px, 2.8vw, 11px);
-      font-weight:700;
-      margin-bottom:6px;
-    }
+.tile{
+  width:var(--tile);height:var(--tile);
+  border:2px solid #3a3a3c;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:900;
+}
 
-    .grid{ display:inline-block; margin-top:4px; }
-    .row{ display:flex; justify-content:center; }
+.correct{background:var(--green);border-color:var(--green);}
+.present{background:var(--yellow);border-color:var(--yellow);}
+.absent{background:var(--grey);border-color:var(--grey);}
 
-    .tile{
-      width: var(--tile);
-      height: var(--tile);
-      margin: var(--gap);
-      border:2px solid #3a3a3c;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size: clamp(18px, 5.5vw, 24px);
-      font-weight:800;
-      box-sizing:border-box;
-    }
+.footer{padding:8px 10px;}
+.status{text-align:center;font-size:14px;font-weight:700;min-height:18px;margin-bottom:6px;}
+.expiry{text-align:center;font-weight:800;margin-bottom:6px;}
 
-    .empty{background:#121213}
-    .correct{background:#538d4e;border-color:#538d4e}
-    .present{background:#b59f3b;border-color:#b59f3b}
-    .absent{background:#3a3a3c;border-color:#3a3a3c}
+.btnRow{display:flex;justify-content:center;margin-bottom:8px;}
+.btn{background:#2a2a2c;border:1px solid #3a3a3c;border-radius:10px;padding:10px 14px;font-weight:900;}
 
-    .kb{ margin-top:6px; }
-    .kbrow{ display:flex; justify-content:center; }
+.kb{display:flex;flex-direction:column;gap:6px;}
+.kbrow{display:flex;justify-content:center;gap:6px;}
+.key{
+  height:var(--key-h);
+  min-width:var(--key-w);
+  padding:0 8px;
+  border-radius:8px;
+  background:var(--key);
+  font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+}
+.key.wide{min-width:calc(var(--key-w)*1.6);}
+.key.green{background:var(--green);}
+.key.yellow{background:var(--yellow);}
+.key.grey{background:var(--grey);}
 
-    .key{
-      background:#818384;
-      color:#fff;
-      font-weight:800;
-      border-radius:4px;
-      margin: 3px;
-      padding: var(--keyPadY) var(--keyPadX);
-      min-width: clamp(24px, 6.2vw, 28px);
-      font-size: var(--keyFont);
-      user-select:none;
-    }
-
-    .wide{
-      padding: var(--keyPadY) clamp(12px, 3.8vw, 14px);
-    }
-
-    .status{
-      margin-top:6px;
-      font-weight:700;
-      font-size: clamp(12px, 3.6vw, 14px);
-      padding:0 10px;
-      min-height:18px;
-    }
-
-    .rules{
-      margin-top:6px;
-      color:#8c8c8c;
-      font-size: clamp(9px, 2.6vw, 10px);
-      font-weight:700;
-    }
-
-    .btnRow{
-      display:flex;
-      justify-content:center;
-      gap:8px;
-      margin-top:6px;
-      flex-wrap:wrap;
-    }
-
-    .btn{
-      display:inline-block;
-      background:#2a2a2c;
-      border:1px solid #3a3a3c;
-      border-radius:8px;
-      padding: 8px 12px;
-      font-weight:900;
-      font-size: clamp(11px, 3.2vw, 12px);
-      user-select:none;
-    }
-  </style>
+.rules{text-align:center;font-size:10px;color:#8c8c8c;margin-top:10px;}
+</style>
 </head>
+
 <body>
-<div class="wrap">
-  <h1>LostWordle 🍻</h1>
-  <div class="sub" id="sub"></div>
-
-  <div class="grid" id="grid"></div>
-  <div class="kb" id="kb"></div>
-
-  <div class="status" id="status"></div>
-
-  <div class="btnRow">
-    <div class="btn" id="newRound">NEW ROUND (same day)</div>
+<div class="app">
+  <div class="header">
+    <div class="title">LostWordle 🍻</div>
+    <div class="sub" id="sub"></div>
   </div>
 
-  <div class="rules">Rules: grey = 2 sips • yellow = 1 sip • green = 0 sips</div>
+  <div class="main">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="footer">
+    <div class="status" id="status"></div>
+    <div class="expiry" id="expiry"></div>
+
+    <div class="btnRow">
+      <div class="btn" id="newRound">NEW ROUND</div>
+    </div>
+
+    <div class="kb" id="kb"></div>
+    <div class="rules">grey = 2 sips • yellow = 1 sip • green = 0 sips</div>
+  </div>
 </div>
 
 <script>
-/* ========= CONFIG ========= */
-const WORD_LEN = 5;
-const MAX_TRIES = 6;
+const WORD_LEN=5, MAX_TRIES=6;
+const WORDS=["GLYPH","QUELL","COVEN","WRAITH","PSALM","VEXED"];
+const SIP={correct:0,present:1,absent:2};
 
-// GMT+11
-const FESTIVAL_UTC_OFFSET_MINUTES = 11 * 60;
+let day=0,secret="",current="",guesses=[],sipTotal=0;
+const keyState={}; // tracks best colour for each key
 
-// Harder daily words (Day 1 = today). All 5 letters.
-const FESTIVAL_WORDS = ["GLYPH","QUELL","COVEN","WRAITH","PSALM","VEXED"];
+const grid=document.getElementById("grid");
+const kb=document.getElementById("kb");
+const sub=document.getElementById("sub");
+const status=document.getElementById("status");
+const expiry=document.getElementById("expiry");
 
-// Drinking rules
-const SIP_VALUES = { correct:0, present:1, absent:2 };
-
-/* ========= TIME (GMT+11) ========= */
-function festivalNow(){
-  const now=new Date();
-  const utcMs=now.getTime()+now.getTimezoneOffset()*60000;
-  return new Date(utcMs + FESTIVAL_UTC_OFFSET_MINUTES*60000);
-}
-function festivalMidnight(date=festivalNow()){
-  const d=new Date(date); d.setHours(0,0,0,0); return d;
-}
-function calcDayIndex(startMidnight){
-  const todayMid=festivalMidnight();
-  const diff=todayMid.getTime()-startMidnight.getTime();
-  return Math.floor(diff/(24*60*60*1000));
-}
-
-/* ========= STATE ========= */
-const startMidnight = festivalMidnight();
-let dayIndex = calcDayIndex(startMidnight);
-
-let secret = "";
-let guesses = []; // {word,result}
-let current = "";
-let sipTotal = 0;
-let stage = "play";
-
-const subEl = document.getElementById("sub");
-const gridEl = document.getElementById("grid");
-const kbEl = document.getElementById("kb");
-const statusEl = document.getElementById("status");
-const newRoundBtn = document.getElementById("newRound");
-
-function onlyAZ(s){ return s.toUpperCase().replace(/[^A-Z]/g,""); }
-
-function loadWordForDay(){
-  secret = FESTIVAL_WORDS[dayIndex] || "";
-  guesses = [];
-  current = "";
-  sipTotal = 0;
-  stage = secret ? "play" : "done";
+function load(){
+  secret=WORDS[day]||"";
+  guesses=[];current="";sipTotal=0;
+  for(const k in keyState) delete keyState[k];
   render();
-  statusEl.textContent = secret
-    ? `Day ${dayIndex+1} word live • expires 11:59pm GMT+11`
-    : `No word scheduled for today.`;
+  expiry.textContent=`Day ${day+1} • expires 11:59pm GMT+11`;
 }
 
-function scoreGuess(guess){
-  const res = Array(WORD_LEN).fill("absent");
-  const s = secret.split("");
-  const g = guess.split("");
-  const remaining = {};
-  for(let i=0;i<WORD_LEN;i++){
-    if(g[i]===s[i]) res[i]="correct";
-    else remaining[s[i]]=(remaining[s[i]]||0)+1;
-  }
-  for(let i=0;i<WORD_LEN;i++){
-    if(res[i]==="correct") continue;
-    if((remaining[g[i]]||0)>0){
-      res[i]="present";
-      remaining[g[i]]--;
+function score(g){
+  const r=Array(5).fill("absent"),s=secret.split(""),m={};
+  g.split("").forEach((c,i)=>c===s[i]?r[i]="correct":m[s[i]]=(m[s[i]]||0)+1);
+  g.split("").forEach((c,i)=>{if(r[i]==="correct")return;if(m[c]){r[i]="present";m[c]--;}});
+  return r;
+}
+
+function updateKeys(g,r){
+  r.forEach((res,i)=>{
+    const c=g[i];
+    if(res==="correct" || keyState[c]!=="green"){
+      if(res==="correct") keyState[c]="green";
+      else if(res==="present" && !keyState[c]) keyState[c]="yellow";
+      else if(res==="absent" && !keyState[c]) keyState[c]="grey";
     }
-  }
-  return res;
+  });
 }
 
-function sipsForResult(result){
-  return result.reduce((sum,r)=>sum+(SIP_VALUES[r]??0),0);
-}
-
-function submitGuess(){
-  if(stage!=="play") return;
-  if(current.length!==WORD_LEN) return;
-
-  const guess = onlyAZ(current);
-
-  const result = scoreGuess(guess);
-  const guessSips = sipsForResult(result);
-  sipTotal += guessSips;
-
-  guesses.push({ word: guess, result });
-  current = "";
-
+function submit(){
+  if(current.length!==5) return;
+  const res=score(current);
+  updateKeys(current,res);
+  sipTotal+=res.reduce((s,v)=>s+SIP[v],0);
+  guesses.push({word:current,res});
+  current="";
   render();
 
-  const won = result.every(r=>r==="correct");
-  const lost = guesses.length>=MAX_TRIES;
-
-  if(won || lost){
-    stage="done";
-    const msg = `You owe ${sipTotal} sip${sipTotal===1?"":"s"} 🍺`;
-    setTimeout(()=>alert("🍻 DRINK UP\n\n"+msg), 50);
-    statusEl.textContent = won ? "🎉 Correct!" : `❌ Out of tries. Word was ${secret}`;
-  } else {
-    statusEl.textContent = `+${guessSips} sips • Total ${sipTotal}`;
+  if(res.every(v=>v==="correct")||guesses.length>=6){
+    setTimeout(()=>alert(`🍻 DRINK UP\n\nYou owe ${sipTotal} sips`),50);
   }
 }
 
-function tapKey(k){
-  if(stage!=="play") return;
-  if(k==="ENTER") submitGuess();
+function tap(k){
+  if(k==="ENTER") submit();
   else if(k==="DEL") current=current.slice(0,-1);
-  else if(current.length<WORD_LEN) current=onlyAZ(current+k);
+  else if(current.length<5) current+=k;
   render();
 }
 
 function render(){
-  subEl.textContent = `Day ${dayIndex+1} • GMT+11 • Total sips: ${sipTotal}`;
-
-  // Grid
-  gridEl.innerHTML = "";
-  for(let r=0;r<MAX_TRIES;r++){
-    const row=document.createElement("div");
-    row.className="row";
-    const guess=guesses[r]?.word || "";
-    const result=guesses[r]?.result || [];
-    const display = (r===guesses.length) ? current : guess;
-
-    for(let c=0;c<WORD_LEN;c++){
-      const tile=document.createElement("div");
-      tile.className="tile " + (result[c] ? result[c] : "empty");
-      tile.textContent = display[c] || "";
-      row.appendChild(tile);
+  sub.textContent=`Total sips: ${sipTotal}`;
+  grid.innerHTML="";
+  for(let r=0;r<6;r++){
+    const row=document.createElement("div");row.className="row";
+    const g=guesses[r]?.word||""; const res=guesses[r]?.res||[];
+    const disp=r===guesses.length?current:g;
+    for(let c=0;c<5;c++){
+      const t=document.createElement("div");
+      t.className="tile "+(res[c]||"");
+      t.textContent=disp[c]||"";
+      row.appendChild(t);
     }
-    gridEl.appendChild(row);
+    grid.appendChild(row);
   }
 
-  // Keyboard
-  kbEl.innerHTML = "";
-  const rows = ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
-  rows.forEach((letters, i)=>{
-    const r=document.createElement("div");
-    r.className="kbrow";
-    if(i===2){
-      const enter=document.createElement("div");
-      enter.className="key wide";
-      enter.textContent="ENTER";
-      enter.onclick=()=>tapKey("ENTER");
-      r.appendChild(enter);
-    }
-    letters.split("").forEach(ch=>{
+  kb.innerHTML="";
+  ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach((row,i)=>{
+    const r=document.createElement("div");r.className="kbrow";
+    if(i===2){const e=document.createElement("div");e.className="key wide";e.textContent="ENTER";e.onclick=()=>tap("ENTER");r.appendChild(e);}
+    row.split("").forEach(c=>{
       const k=document.createElement("div");
-      k.className="key";
-      k.textContent=ch;
-      k.onclick=()=>tapKey(ch);
-      r.appendChild(k);
+      k.className="key "+(keyState[c]||"");
+      k.textContent=c;k.onclick=()=>tap(c);r.appendChild(k);
     });
-    if(i===2){
-      const del=document.createElement("div");
-      del.className="key wide";
-      del.textContent="DEL";
-      del.onclick=()=>tapKey("DEL");
-      r.appendChild(del);
-    }
-    kbEl.appendChild(r);
+    if(i===2){const d=document.createElement("div");d.className="key wide";d.textContent="DEL";d.onclick=()=>tap("DEL");r.appendChild(d);}
+    kb.appendChild(r);
   });
 }
 
-newRoundBtn.onclick=()=>{
-  if(!secret) return;
-  guesses=[]; current=""; sipTotal=0; stage="play";
-  statusEl.textContent = `Same word for Day ${dayIndex+1}. New round started.`;
-  render();
-};
-
-// Day rollover at midnight (GMT+11)
-setInterval(()=>{
-  const newIdx = calcDayIndex(startMidnight);
-  if(newIdx!==dayIndex){
-    dayIndex=newIdx;
-    loadWordForDay();
-  }
-}, 10000);
-
-loadWordForDay();
-
-// Register Service Worker for offline use
-if("serviceWorker" in navigator){
-  window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js").catch(()=>{});
-  });
-}
+document.getElementById("newRound").onclick=load;
+load();
 </script>
 </body>
 </html>
