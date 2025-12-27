@@ -29,6 +29,7 @@ html,body{
   background:var(--bg);color:#fff;
   font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;
   overflow:hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app{
@@ -70,7 +71,9 @@ html,body{
   border-radius:8px;
   background:var(--key);
   font-weight:900;
+  font-size:var(--key-font);
   display:flex;align-items:center;justify-content:center;
+  user-select:none;
 }
 .key.wide{min-width:calc(var(--key-w)*1.6);}
 .key.green{background:var(--green);}
@@ -106,26 +109,41 @@ html,body{
 const WORD_LEN = 5;
 const MAX_TRIES = 6;
 
-// Day 1 = 27/12/2024 at 00:00 GMT+11 → 26/12 13:00 UTC
-const START_UTC = Date.UTC(2024, 11, 26, 13, 0, 0);
+// GMT+11 day rollover (Sydney festival time)
+const OFFSET_MINUTES = 11 * 60;
+const OFFSET_MS = OFFSET_MINUTES * 60 * 1000;
+const DAY_MS = 86400000;
 
+// Day 1 should be 27/12/2025 00:00 (GMT+11)
+// That is 26/12/2025 13:00 UTC
+const START_UTC_MS = Date.UTC(2025, 11, 26, 13, 0, 0);
+
+// 6 daily words (Day 1..Day 6)
 const WORDS = ["GLYPH","QUELL","COVEN","WRAITH","PSALM","VEXED"];
+
+// Drinking rules
 const SIP = { correct:0, present:1, absent:2 };
 
-/* ========= DATE LOGIC (CORRECT) ========= */
+/* ========= GMT+11 DAY INDEX (CORRECT) =========
+We convert any UTC timestamp into a "day number in GMT+11" by adding OFFSET_MS
+then taking floor(ms / DAY_MS). This makes rollover happen at midnight GMT+11.
+*/
+const START_DAYNUM = Math.floor((START_UTC_MS + OFFSET_MS) / DAY_MS);
+
 function dayIndexNow(){
   const nowUTC = Date.now();
-  return Math.floor((nowUTC - START_UTC) / (86400000));
+  const nowDayNum = Math.floor((nowUTC + OFFSET_MS) / DAY_MS);
+  return nowDayNum - START_DAYNUM; // 0 = Day 1
 }
 
 /* ========= STATE ========= */
-let dayIndex = dayIndexNow();
+let dayIndex = 0;          // 0-based index into WORDS
 let secret = "";
 let current = "";
 let guesses = [];
 let sipTotal = 0;
 let gameOver = false;
-const keyState = {};
+const keyState = {};       // letter -> "green"|"yellow"|"grey"
 
 const grid = document.getElementById("grid");
 const kb = document.getElementById("kb");
@@ -137,97 +155,151 @@ const expiry = document.getElementById("expiry");
 function loadForToday(){
   dayIndex = dayIndexNow();
   secret = WORDS[dayIndex] || "";
-  guesses=[]; current=""; sipTotal=0; gameOver=!secret;
+  guesses = [];
+  current = "";
+  sipTotal = 0;
+  gameOver = !secret;
+
   for(const k in keyState) delete keyState[k];
 
+  status.textContent = "";
   expiry.textContent = secret
-    ? `Day ${dayIndex+1} • expires 11:59pm`
+    ? `Day ${dayIndex+1} • expires 11:59pm (GMT+11)`
     : "No word today";
 
   render();
 }
 
 function score(g){
-  const r = Array(5).fill("absent");
+  const r = Array(WORD_LEN).fill("absent");
   const s = secret.split("");
   const used = {};
-  g.split("").forEach((c,i)=>c===s[i]?r[i]="correct":used[s[i]]=(used[s[i]]||0)+1);
-  g.split("").forEach((c,i)=>{if(r[i]!=="correct" && used[c]){r[i]="present";used[c]--;}});
+
+  g.split("").forEach((c,i)=>{
+    if(c===s[i]) r[i]="correct";
+    else used[s[i]] = (used[s[i]]||0) + 1;
+  });
+
+  g.split("").forEach((c,i)=>{
+    if(r[i]==="correct") return;
+    if(used[c]){
+      r[i]="present";
+      used[c]--;
+    }
+  });
+
   return r;
 }
 
-function updateKeys(g,r){
-  r.forEach((res,i)=>{
-    const c=g[i];
+function updateKeys(g, r){
+  // priority: green > yellow > grey
+  r.forEach((res, i) => {
+    const c = g[i];
     if(res==="correct") keyState[c]="green";
-    else if(res==="present" && keyState[c]!=="green") keyState[c]="yellow";
+    else if(res==="present" && keyState[c] !== "green") keyState[c]="yellow";
     else if(!keyState[c]) keyState[c]="grey";
   });
 }
 
 function submit(){
-  if(gameOver || current.length!==5) return;
-  const res=score(current);
-  updateKeys(current,res);
-  sipTotal+=res.reduce((a,v)=>a+SIP[v],0);
-  guesses.push({word:current,res});
-  current="";
+  if(gameOver || current.length !== WORD_LEN) return;
+
+  const res = score(current);
+  updateKeys(current, res);
+
+  sipTotal += res.reduce((sum, v) => sum + SIP[v], 0);
+  guesses.push({ word: current, res });
+  current = "";
   render();
 
-  if(res.every(v=>v==="correct") || guesses.length>=6){
-    gameOver=true;
-    status.textContent=res.every(v=>v==="correct")?"🎉 Correct!":`❌ Word was ${secret}`;
-    setTimeout(()=>alert(`🍻 DRINK UP\n\nTake ${sipTotal} sip${sipTotal===1?"":"s"}`),50);
+  const won = res.every(v => v === "correct");
+  const lost = guesses.length >= MAX_TRIES;
+
+  if(won || lost){
+    gameOver = true;
+    status.textContent = won ? "🎉 Correct!" : `❌ Word was ${secret}`;
+    setTimeout(()=>alert(`🍻 DRINK UP\n\nTake ${sipTotal} sip${sipTotal===1?"":"s"}`), 50);
   }
 }
 
 function tap(k){
   if(gameOver) return;
-  if(k==="ENTER") submit();
-  else if(k==="DEL") current=current.slice(0,-1);
-  else if(current.length<5) current+=k;
+  if(k === "ENTER") submit();
+  else if(k === "DEL") current = current.slice(0, -1);
+  else if(current.length < WORD_LEN) current += k;
   render();
 }
 
 function render(){
-  sub.textContent=`Day ${dayIndex+1} • Total sips: ${sipTotal}`;
-  grid.innerHTML="";
-  for(let r=0;r<6;r++){
-    const row=document.createElement("div");row.className="row";
-    const g=guesses[r]?.word||"", res=guesses[r]?.res||[];
-    const disp=r===guesses.length?current:g;
-    for(let c=0;c<5;c++){
-      const t=document.createElement("div");
-      t.className="tile "+(res[c]||"");
-      t.textContent=disp[c]||"";
+  sub.textContent = secret
+    ? `Day ${dayIndex+1} • Total sips: ${sipTotal}`
+    : `No word today • Total sips: ${sipTotal}`;
+
+  // Grid
+  grid.innerHTML = "";
+  for(let r=0; r<MAX_TRIES; r++){
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const g = guesses[r]?.word || "";
+    const res = guesses[r]?.res || [];
+    const disp = (r === guesses.length) ? current : g;
+
+    for(let c=0; c<WORD_LEN; c++){
+      const t = document.createElement("div");
+      t.className = "tile " + (res[c] || "");
+      t.textContent = disp[c] || "";
       row.appendChild(t);
     }
     grid.appendChild(row);
   }
 
-  kb.innerHTML="";
-  ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach((row,i)=>{
-    const r=document.createElement("div");r.className="kbrow";
-    if(i===2){const e=document.createElement("div");e.className="key wide";e.textContent="ENTER";e.onclick=()=>tap("ENTER");r.appendChild(e);}
-    row.split("").forEach(ch=>{
-      const k=document.createElement("div");
-      k.className="key "+(keyState[ch]||"");
-      k.textContent=ch;k.onclick=()=>tap(ch);r.appendChild(k);
+  // Keyboard
+  kb.innerHTML = "";
+  ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach((row, i) => {
+    const r = document.createElement("div");
+    r.className = "kbrow";
+
+    if(i === 2){
+      const e = document.createElement("div");
+      e.className = "key wide";
+      e.textContent = "ENTER";
+      e.onclick = () => tap("ENTER");
+      r.appendChild(e);
+    }
+
+    row.split("").forEach(ch => {
+      const k = document.createElement("div");
+      k.className = "key " + (keyState[ch] || "");
+      k.textContent = ch;
+      k.onclick = () => tap(ch);
+      r.appendChild(k);
     });
-    if(i===2){const d=document.createElement("div");d.className="key wide";d.textContent="DEL";d.onclick=()=>tap("DEL");r.appendChild(d);}
+
+    if(i === 2){
+      const d = document.createElement("div");
+      d.className = "key wide";
+      d.textContent = "DEL";
+      d.onclick = () => tap("DEL");
+      r.appendChild(d);
+    }
+
     kb.appendChild(r);
   });
 }
 
-/* rollover check */
+/* ========= AUTO ROLLOVER ========= */
 setInterval(()=>{
-  const idx=dayIndexNow();
-  if(idx!==dayIndex) loadForToday();
-},10000);
+  const idx = dayIndexNow();
+  if(idx !== dayIndex){
+    loadForToday();
+  }
+}, 10000);
 
 loadForToday();
 
-if("serviceWorker"in navigator){
+/* ========= OFFLINE ========= */
+if("serviceWorker" in navigator){
   navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
 </script>
