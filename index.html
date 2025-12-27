@@ -61,10 +61,7 @@ html,body{
 
 .footer{padding:8px 10px;}
 .status{text-align:center;font-size:14px;font-weight:700;min-height:18px;margin-bottom:6px;}
-.expiry{text-align:center;font-weight:800;margin-bottom:6px;}
-
-.btnRow{display:flex;justify-content:center;margin-bottom:8px;}
-.btn{background:#2a2a2c;border:1px solid #3a3a3c;border-radius:10px;padding:10px 14px;font-weight:900;}
+.expiry{text-align:center;font-weight:800;margin-bottom:10px;}
 
 .kb{display:flex;flex-direction:column;gap:6px;}
 .kbrow{display:flex;justify-content:center;gap:6px;}
@@ -101,10 +98,6 @@ html,body{
     <div class="status" id="status"></div>
     <div class="expiry" id="expiry"></div>
 
-    <div class="btnRow">
-      <div class="btn" id="newRound">NEW ROUND</div>
-    </div>
-
     <div class="kb" id="kb"></div>
     <div class="rules">grey = 2 sips • yellow = 1 sip • green = 0 sips</div>
   </div>
@@ -115,8 +108,8 @@ const WORD_LEN=5, MAX_TRIES=6;
 const WORDS=["GLYPH","QUELL","COVEN","WRAITH","PSALM","VEXED"];
 const SIP={correct:0,present:1,absent:2};
 
-let day=0,secret="",current="",guesses=[],sipTotal=0;
-const keyState={}; // tracks best colour for each key
+let day=0,secret="",current="",guesses=[],sipTotal=0,gameOver=false;
+const keyState={};
 
 const grid=document.getElementById("grid");
 const kb=document.getElementById("kb");
@@ -126,7 +119,7 @@ const expiry=document.getElementById("expiry");
 
 function load(){
   secret=WORDS[day]||"";
-  guesses=[];current="";sipTotal=0;
+  guesses=[];current="";sipTotal=0;gameOver=false;
   for(const k in keyState) delete keyState[k];
   render();
   expiry.textContent=`Day ${day+1} • expires 11:59pm GMT+11`;
@@ -142,16 +135,15 @@ function score(g){
 function updateKeys(g,r){
   r.forEach((res,i)=>{
     const c=g[i];
-    if(res==="correct" || keyState[c]!=="green"){
-      if(res==="correct") keyState[c]="green";
-      else if(res==="present" && !keyState[c]) keyState[c]="yellow";
-      else if(res==="absent" && !keyState[c]) keyState[c]="grey";
-    }
+    if(res==="correct") keyState[c]="green";
+    else if(res==="present" && keyState[c]!=="green") keyState[c]="yellow";
+    else if(!keyState[c]) keyState[c]="grey";
   });
 }
 
 function submit(){
-  if(current.length!==5) return;
+  if(gameOver || current.length!==5) return;
+
   const res=score(current);
   updateKeys(current,res);
   sipTotal+=res.reduce((s,v)=>s+SIP[v],0);
@@ -159,12 +151,15 @@ function submit(){
   current="";
   render();
 
-  if(res.every(v=>v==="correct")||guesses.length>=6){
-    setTimeout(()=>alert(`🍻 DRINK UP\n\nYou owe ${sipTotal} sips`),50);
+  if(res.every(v=>v==="correct") || guesses.length>=MAX_TRIES){
+    gameOver=true;
+    setTimeout(()=>alert(`🍻 DRINK UP\n\nTake ${sipTotal} sip${sipTotal===1?"":"s"}`),50);
+    status.textContent=res.every(v=>v==="correct")?"🎉 Correct!":"❌ Out of tries";
   }
 }
 
 function tap(k){
+  if(gameOver) return;
   if(k==="ENTER") submit();
   else if(k==="DEL") current=current.slice(0,-1);
   else if(current.length<5) current+=k;
@@ -190,18 +185,26 @@ function render(){
   kb.innerHTML="";
   ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach((row,i)=>{
     const r=document.createElement("div");r.className="kbrow";
-    if(i===2){const e=document.createElement("div");e.className="key wide";e.textContent="ENTER";e.onclick=()=>tap("ENTER");r.appendChild(e);}
+    if(i===2){
+      const e=document.createElement("div");
+      e.className="key wide";e.textContent="ENTER";
+      e.onclick=()=>tap("ENTER");r.appendChild(e);
+    }
     row.split("").forEach(c=>{
       const k=document.createElement("div");
       k.className="key "+(keyState[c]||"");
-      k.textContent=c;k.onclick=()=>tap(c);r.appendChild(k);
+      k.textContent=c;k.onclick=()=>tap(c);
+      r.appendChild(k);
     });
-    if(i===2){const d=document.createElement("div");d.className="key wide";d.textContent="DEL";d.onclick=()=>tap("DEL");r.appendChild(d);}
+    if(i===2){
+      const d=document.createElement("div");
+      d.className="key wide";d.textContent="DEL";
+      d.onclick=()=>tap("DEL");r.appendChild(d);
+    }
     kb.appendChild(r);
   });
 }
 
-document.getElementById("newRound").onclick=load;
 load();
 </script>
 </body>
