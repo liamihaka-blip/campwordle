@@ -1,4 +1,4 @@
-const CACHE_NAME = "lostwordle-v7";
+const CACHE_NAME = "lostwordle-v8";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./sw.js"];
 
 self.addEventListener("install", (event) => {

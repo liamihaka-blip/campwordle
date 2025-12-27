@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#121213" />
 <meta name="apple-mobile-web-app-capable" content="yes">
-
 <link rel="manifest" href="manifest.webmanifest">
 <title>LostWordle 🍻</title>
 
@@ -26,10 +25,13 @@
 
 *{box-sizing:border-box;}
 html,body{
-  margin:0;height:100%;
-  background:var(--bg);color:#fff;
+  margin:0;
+  height:100%;
+  background:var(--bg);
+  color:#fff;
   font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial;
   overflow:hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .app{
@@ -40,31 +42,78 @@ html,body{
   padding-bottom:env(safe-area-inset-bottom);
 }
 
-.header{text-align:center;padding:10px;border-bottom:1px solid #2a2a2c;}
-.title{margin:0;font-size:28px;font-weight:800;}
-.sub{margin-top:6px;font-size:12px;color:#bdbdbd;font-weight:700;}
-
-.main{flex:1;display:flex;align-items:center;justify-content:center;}
-.grid{display:flex;flex-direction:column;gap:var(--gap);}
-.row{display:flex;gap:var(--gap);}
-
-.tile{
-  width:var(--tile);height:var(--tile);
-  border:2px solid #3a3a3c;
-  display:flex;align-items:center;justify-content:center;
-  font-size:26px;font-weight:900;
+.header{
+  text-align:center;
+  padding:10px;
+  border-bottom:1px solid #2a2a2c;
+}
+.title{
+  margin:0;
+  font-size:28px;
+  font-weight:800;
+}
+.sub{
+  margin-top:6px;
+  font-size:12px;
+  color:#bdbdbd;
+  font-weight:700;
 }
 
+.main{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.grid{
+  display:flex;
+  flex-direction:column;
+  gap:var(--gap);
+}
+.row{
+  display:flex;
+  gap:var(--gap);
+}
+
+.tile{
+  width:var(--tile);
+  height:var(--tile);
+  border:2px solid #3a3a3c;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:26px;
+  font-weight:900;
+}
 .correct{background:var(--green);border-color:var(--green);}
 .present{background:var(--yellow);border-color:var(--yellow);}
 .absent{background:var(--grey);border-color:var(--grey);}
 
-.footer{padding:8px 10px;}
-.status{text-align:center;font-size:14px;font-weight:700;min-height:18px;margin-bottom:6px;}
-.expiry{text-align:center;font-weight:800;margin-bottom:10px;}
+.footer{
+  padding:8px 10px;
+}
+.status{
+  text-align:center;
+  font-size:14px;
+  font-weight:700;
+  min-height:18px;
+}
+.expiry{
+  text-align:center;
+  font-weight:800;
+  margin:6px 0 8px;
+}
 
-.kb{display:flex;flex-direction:column;gap:6px;}
-.kbrow{display:flex;justify-content:center;gap:6px;}
+.kb{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.kbrow{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+}
 .key{
   height:var(--key-h);
   min-width:var(--key-w);
@@ -72,14 +121,23 @@ html,body{
   border-radius:8px;
   background:var(--key);
   font-weight:900;
-  display:flex;align-items:center;justify-content:center;
+  font-size:var(--key-font);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
 }
 .key.wide{min-width:calc(var(--key-w)*1.6);}
 .key.green{background:var(--green);}
 .key.yellow{background:var(--yellow);}
 .key.grey{background:var(--grey);}
 
-.rules{text-align:center;font-size:10px;color:#8c8c8c;margin-top:10px;}
+.rules{
+  text-align:center;
+  font-size:10px;
+  color:#8c8c8c;
+  margin-top:10px;
+}
 </style>
 </head>
 
@@ -104,31 +162,95 @@ html,body{
 </div>
 
 <script>
-const WORD_LEN=5, MAX_TRIES=6;
-const WORDS=["GLYPH","QUELL","COVEN","WRAITH","PSALM","VEXED"];
-const SIP={correct:0,present:1,absent:2};
+/* ===== CONFIG ===== */
+const WORD_LEN = 5;
+const MAX_TRIES = 6;
+const GMT_OFFSET_MINUTES = 11 * 60;
 
-let day=0,secret="",current="",guesses=[],sipTotal=0,gameOver=false;
-const keyState={};
+/* Day 1 = 27/12 GMT+11 (fixed forever) */
+const START_MIDNIGHT = new Date(Date.UTC(2024, 11, 26, 13, 0, 0));
 
-const grid=document.getElementById("grid");
-const kb=document.getElementById("kb");
-const sub=document.getElementById("sub");
-const status=document.getElementById("status");
-const expiry=document.getElementById("expiry");
+const WORDS = [
+  "GLYPH",
+  "QUELL",
+  "COVEN",
+  "WRAITH",
+  "PSALM",
+  "VEXED"
+];
 
-function load(){
-  secret=WORDS[day]||"";
-  guesses=[];current="";sipTotal=0;gameOver=false;
+const SIP = { correct:0, present:1, absent:2 };
+
+/* ===== TIME HELPERS ===== */
+function festivalNow(){
+  const now = new Date();
+  return new Date(
+    now.getTime() + (now.getTimezoneOffset() + GMT_OFFSET_MINUTES) * 60000
+  );
+}
+
+function festivalMidnight(){
+  const d = festivalNow();
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function dayIndexNow(){
+  const diff = festivalMidnight().getTime() - START_MIDNIGHT.getTime();
+  return Math.floor(diff / (24*60*60*1000));
+}
+
+/* ===== STATE ===== */
+let dayIndex = dayIndexNow();
+let secret = "";
+let current = "";
+let guesses = [];
+let sipTotal = 0;
+let gameOver = false;
+const keyState = {};
+
+const grid = document.getElementById("grid");
+const kb = document.getElementById("kb");
+const sub = document.getElementById("sub");
+const status = document.getElementById("status");
+const expiry = document.getElementById("expiry");
+
+/* ===== GAME ===== */
+function loadForToday(){
+  dayIndex = dayIndexNow();
+  secret = WORDS[dayIndex] || "";
+  guesses = [];
+  current = "";
+  sipTotal = 0;
+  gameOver = !secret;
   for(const k in keyState) delete keyState[k];
+
+  status.textContent = "";
+  expiry.textContent = secret
+    ? `Day ${dayIndex+1} • expires 11:59pm GMT+11`
+    : "No word today";
+
   render();
-  expiry.textContent=`Day ${day+1} • expires 11:59pm GMT+11`;
 }
 
 function score(g){
-  const r=Array(5).fill("absent"),s=secret.split(""),m={};
-  g.split("").forEach((c,i)=>c===s[i]?r[i]="correct":m[s[i]]=(m[s[i]]||0)+1);
-  g.split("").forEach((c,i)=>{if(r[i]==="correct")return;if(m[c]){r[i]="present";m[c]--;}});
+  const r = Array(5).fill("absent");
+  const s = secret.split("");
+  const used = {};
+
+  g.split("").forEach((c,i)=>{
+    if(c===s[i]) r[i]="correct";
+    else used[s[i]]=(used[s[i]]||0)+1;
+  });
+
+  g.split("").forEach((c,i)=>{
+    if(r[i]==="correct") return;
+    if(used[c]){
+      r[i]="present";
+      used[c]--;
+    }
+  });
+
   return r;
 }
 
@@ -144,17 +266,22 @@ function updateKeys(g,r){
 function submit(){
   if(gameOver || current.length!==5) return;
 
-  const res=score(current);
+  const res = score(current);
   updateKeys(current,res);
-  sipTotal+=res.reduce((s,v)=>s+SIP[v],0);
+  sipTotal += res.reduce((a,v)=>a+SIP[v],0);
   guesses.push({word:current,res});
   current="";
   render();
 
-  if(res.every(v=>v==="correct") || guesses.length>=MAX_TRIES){
+  if(res.every(v=>v==="correct") || guesses.length>=6){
     gameOver=true;
-    setTimeout(()=>alert(`🍻 DRINK UP\n\nTake ${sipTotal} sip${sipTotal===1?"":"s"}`),50);
-    status.textContent=res.every(v=>v==="correct")?"🎉 Correct!":"❌ Out of tries";
+    status.textContent = res.every(v=>v==="correct")
+      ? "🎉 Correct!"
+      : `❌ Out of tries. Word was ${secret}`;
+
+    setTimeout(()=>alert(
+      `🍻 DRINK UP\n\nTake ${sipTotal} sip${sipTotal===1?"":"s"}`
+    ),50);
   }
 }
 
@@ -167,12 +294,15 @@ function tap(k){
 }
 
 function render(){
-  sub.textContent=`Total sips: ${sipTotal}`;
+  sub.textContent = `Total sips: ${sipTotal}`;
   grid.innerHTML="";
   for(let r=0;r<6;r++){
-    const row=document.createElement("div");row.className="row";
-    const g=guesses[r]?.word||""; const res=guesses[r]?.res||[];
+    const row=document.createElement("div");
+    row.className="row";
+    const g=guesses[r]?.word||"";
+    const res=guesses[r]?.res||[];
     const disp=r===guesses.length?current:g;
+
     for(let c=0;c<5;c++){
       const t=document.createElement("div");
       t.className="tile "+(res[c]||"");
@@ -184,28 +314,49 @@ function render(){
 
   kb.innerHTML="";
   ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach((row,i)=>{
-    const r=document.createElement("div");r.className="kbrow";
+    const r=document.createElement("div");
+    r.className="kbrow";
+
     if(i===2){
       const e=document.createElement("div");
-      e.className="key wide";e.textContent="ENTER";
-      e.onclick=()=>tap("ENTER");r.appendChild(e);
+      e.className="key wide";
+      e.textContent="ENTER";
+      e.onclick=()=>tap("ENTER");
+      r.appendChild(e);
     }
-    row.split("").forEach(c=>{
+
+    row.split("").forEach(ch=>{
       const k=document.createElement("div");
-      k.className="key "+(keyState[c]||"");
-      k.textContent=c;k.onclick=()=>tap(c);
+      k.className="key "+(keyState[ch]||"");
+      k.textContent=ch;
+      k.onclick=()=>tap(ch);
       r.appendChild(k);
     });
+
     if(i===2){
       const d=document.createElement("div");
-      d.className="key wide";d.textContent="DEL";
-      d.onclick=()=>tap("DEL");r.appendChild(d);
+      d.className="key wide";
+      d.textContent="DEL";
+      d.onclick=()=>tap("DEL");
+      r.appendChild(d);
     }
+
     kb.appendChild(r);
   });
 }
 
-load();
+/* rollover check every 10s */
+setInterval(()=>{
+  const idx = dayIndexNow();
+  if(idx !== dayIndex) loadForToday();
+}, 10000);
+
+loadForToday();
+
+/* offline */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
 </script>
 </body>
 </html>
